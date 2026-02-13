@@ -397,146 +397,62 @@
     </div>
 
     <script>
-        const webhookUrl = "https://floaron.app.n8n.cloud/webhook-test/f8414981-70c9-48c5-aa61-6d2c6eb0ef31";
+       const webhookUrl = "https://floaron.app.n8n.cloud/webhook/f8414981-70c9-48c5-aa61-6d2c6eb0ef31";
+const statusMessages = ["INITIALIZING...", "SCANNING MARKET...", "ANALYZING...", "ENCRYPTING...", "DISPATCHING..."];
 
-        // 3D Tilt Effect
-        const card = document.getElementById('card');
-        
-        document.addEventListener('mousemove', (e) => {
-            const x = (window.innerWidth / 2 - e.pageX) / 50;
-            const y = (window.innerHeight / 2 - e.pageY) / 50;
-            card.style.transform = `rotateY(${x}deg) rotateX(${-y}deg)`;
+async function runAudit() {
+    const input = document.getElementById('nicheInput');
+    const btn = document.getElementById('actionBtn');
+    const btnText = document.getElementById('btnText');
+    const loader = document.getElementById('loader');
+    const statusContainer = document.getElementById('statusContainer');
+    const statusDisplay = document.getElementById('statusText');
+    
+    const niche = input.value.trim();
+    if (!niche) return;
+
+    btn.disabled = true;
+    input.disabled = true;
+    loader.style.display = 'block';
+    statusContainer.style.display = 'block';
+    btnText.textContent = 'ANALYZING';
+
+    let msgIndex = 0;
+    // Wir definieren logInterval hier, damit es überall im Try/Catch bekannt ist
+    const logInterval = setInterval(() => {
+        statusDisplay.textContent = statusMessages[msgIndex];
+        msgIndex = (msgIndex + 1) % statusMessages.length;
+    }, 1500);
+
+    try {
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ niche: niche, source: 'source_control_web' })
         });
 
-        document.addEventListener('mouseleave', () => {
-            card.style.transform = 'rotateY(0) rotateX(0)';
-        });
+        const data = await response.json();
+        clearInterval(logInterval); // Jetzt findet er die Variable sicher
 
-        // Status Log Sequenz
-        const statusMessages = [
-            "Initializing Neural Network...",
-            "Accessing Market Segments...",
-            "Analyzing Competitor Structures...",
-            "Encrypting Intelligence Report..."
-        ];
-
-        let statusInterval;
-        let currentMessageIndex = 0;
-
-        function startStatusLog() {
-            const statusLog = document.getElementById('statusLog');
-            currentMessageIndex = 0;
-            statusLog.textContent = statusMessages[0];
-            statusLog.classList.add('active');
-            
-            statusInterval = setInterval(() => {
-                currentMessageIndex++;
-                if (currentMessageIndex < statusMessages.length) {
-                    statusLog.textContent = statusMessages[currentMessageIndex];
-                } else {
-                    clearInterval(statusInterval);
-                }
-            }, 1500);
+        if (response.ok) {
+            btnText.textContent = 'COMPLETED';
+            statusDisplay.textContent = 'DATA TRANSMITTED';
+        } else {
+            btnText.textContent = 'LIMITED';
+            statusDisplay.textContent = data.message || 'LIMIT REACHED';
         }
-
-        function stopStatusLog(completed = false) {
-            clearInterval(statusInterval);
-            const statusLog = document.getElementById('statusLog');
-            if (completed) {
-                statusLog.textContent = "Transmission Complete";
-                setTimeout(() => {
-                    statusLog.classList.remove('active');
-                    setTimeout(() => {
-                        statusLog.textContent = "";
-                    }, 300);
-                }, 2000);
-            } else {
-                statusLog.classList.remove('active');
-                setTimeout(() => {
-                    statusLog.textContent = "";
-                }, 300);
-            }
-        }
-
-        async function runAudit() {
-            const input = document.getElementById('nicheInput');
-            const btn = document.getElementById('actionBtn');
-            const btnText = document.getElementById('btnText');
-            const loader = document.getElementById('loader');
-            const checkIcon = document.getElementById('checkIcon');
-            
-            const niche = input.value.trim();
-            
-            if (!niche) {
-                input.style.borderColor = 'rgba(255,100,100,0.4)';
-                setTimeout(() => { input.style.borderColor = ''; }, 2000);
-                return;
-            }
-            
-            // UI Sperre
-            btn.disabled = true;
-            input.disabled = true;
-            btn.style.pointerEvents = 'none';
-            btnText.textContent = 'Processing';
-            btnText.style.opacity = '0.7';
-            loader.style.display = 'block';
-            
-            // Starte Status Log
-            startStatusLog();
-            
-            try {
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        niche: niche,
-                        timestamp: new Date().toISOString(),
-                        source: 'source_control_3d'
-                    })
-                });
-                
-                if (!response.ok) throw new Error('Failed');
-                
-                // Erfolg
-                loader.style.display = 'none';
-                checkIcon.style.display = 'block';
-                btnText.textContent = 'Completed';
-                stopStatusLog(true);
-                
-                // Reset nach 3 Sekunden
-                setTimeout(() => {
-                    btnText.textContent = 'Initialize Audit';
-                    btnText.style.opacity = '1';
-                    checkIcon.style.display = 'none';
-                    btn.disabled = false;
-                    input.disabled = false;
-                    btn.style.pointerEvents = 'all';
-                    input.value = '';
-                    input.focus();
-                }, 3000);
-                
-            } catch (error) {
-                // Fehler
-                loader.style.display = 'none';
-                btnText.textContent = 'Error - Retry';
-                btnText.style.opacity = '1';
-                stopStatusLog(false);
-                
-                // UI Entsperrung bei Fehler
-                setTimeout(() => {
-                    btn.disabled = false;
-                    input.disabled = false;
-                    btn.style.pointerEvents = 'all';
-                }, 2000);
-            }
-        }
-
-        // Enter key support
-        document.getElementById('nicheInput').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !document.getElementById('nicheInput').disabled) {
-                runAudit();
-            }
-        });
-    </script>
-</body>
-</html>
+    } catch (error) {
+        clearInterval(logInterval);
+        btnText.textContent = 'ERROR';
+        statusDisplay.textContent = 'CONNECTION FAILED';
+    } finally {
+        setTimeout(() => {
+            btn.disabled = false;
+            input.disabled = false;
+            btnText.textContent = 'INITIALIZE AUDIT';
+            loader.style.display = 'none';
+            statusContainer.style.display = 'none';
+            input.value = '';
+        }, 5000);
+    }
+}
